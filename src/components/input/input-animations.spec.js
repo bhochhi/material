@@ -1,13 +1,11 @@
 describe('md-input-container animations', function() {
   var $rootScope, $compile, $animateCss, $material, $$mdInput,
-    el, pageScope, invalidAnimation, messagesAnimation, messageAnimation,
-    cssTransitionsDisabled = false, lastAnimateCall;
+    el, pageScope, computedStyle;
 
   // Load our modules
   beforeEach(module('ngAnimate', 'ngMessages', 'material.components.input', 'material.components.checkbox'));
 
   // Run pre-test setup
-  beforeEach(decorateAnimateCss);
   beforeEach(injectGlobals);
   beforeEach(setupVariables);
 
@@ -20,33 +18,33 @@ describe('md-input-container animations', function() {
       '  <md-input-container>' +
       '    <input name="foo" ng-model="foo" required ng-pattern="/^1234$/" />' +
       '    <div class="errors" ng-messages="testForm.foo.$error">' +
-      '      <div ng-message="required">required</div>' +
-      '      <div ng-message="pattern">pattern</div>' +
+      '      <div ng-message="required" style="transition:0s none">required</div>' +
+      '      <div ng-message="pattern" style="transition:0s none">pattern</div>' +
       '    </div>' +
       '  </md-input-container>' +
       '</form>'
     );
 
     var container = el.find('md-input-container'),
-      input = el.find('input'),
-      doneSpy = jasmine.createSpy('done');
+      input = el.find('input');
 
     // Mimic the real validations/animations that fire
 
     /*
      * 1. Set to an invalid pattern but don't blur (so it's not invalid yet)
      *
-     * Expect nothing to happen ($animateCss called with no options)
+     * Expect nothing to happen (message is hidden)
      */
 
     setFoo('asdf');
-    messageAnimation.enter(getError(), doneSpy);
     flush();
 
     expectError(getError(), 'pattern');
-    expect(doneSpy).toHaveBeenCalled();
     expect(container).not.toHaveClass('md-input-invalid');
-    expect(lastAnimateCall).toEqual({element: getError(), options: {}});
+    
+    computedStyle = $window.getComputedStyle(getError()[0]);
+    expect(parseInt(computedStyle.opacity)).toEqual(0); // not visible
+    expect(parseInt(computedStyle.marginTop)).toBeLessThan(0);
 
     /*
      * 2. Blur the input, which adds the md-input-invalid class
@@ -73,116 +71,17 @@ describe('md-input-container animations', function() {
      */
 
     // Grab the pattern error before we change foo and it disappears
-    var patternError = getError();
-
-    doneSpy.calls.reset();
-    messageAnimation.leave(patternError, doneSpy);
-    flush();
-
-    expect(doneSpy).toHaveBeenCalled();
-    expect(lastAnimateCall.element).toEqual(patternError);
-    expect(lastAnimateCall.options.event).toEqual('leave');
-    expect(parseInt(lastAnimateCall.options.to["margin-top"])).toBeLessThan(0);
 
     setFoo('');
     expectError(getError(), 'required');
 
-    doneSpy.calls.reset();
-    messageAnimation.enter(getError(), doneSpy);
     flush();
 
-    expect(doneSpy).toHaveBeenCalled();
     expect(container).toHaveClass('md-input-invalid');
-    expect(lastAnimateCall.element).toEqual(getError());
-    expect(lastAnimateCall.options.event).toEqual('enter');
-    expect(lastAnimateCall.options.to).toEqual({"opacity": 1, "margin-top": "0"});
-  });
+    computedStyle = $window.getComputedStyle(getError()[0]);
+    expect(parseInt(computedStyle.opacity)).toEqual(1);
+    expect(parseInt(computedStyle.marginTop)).toEqual(0);
 
-  describe('method tests', function() {
-
-    describe('#showInputMessages', function() {
-      it('logs a warning with no messages element', inject(function($log) {
-        // Note that the element does NOT have a parent md-input-messages-animation class
-        var element = angular.element('<div><div class="md-input-message-animation"></div></div>');
-        var done = jasmine.createSpy('done');
-        var warnSpy = spyOn($log, 'warn');
-
-        $$mdInput.messages.show(element, done);
-
-        expect(done).toHaveBeenCalled();
-        expect(warnSpy).toHaveBeenCalled();
-      }));
-
-      it('logs a warning with no messages children', inject(function($log) {
-        // Note that the element does NOT have any child md-input-message-animation divs
-        var element = angular.element('<div class="md-input-messages-animation"></div>');
-        var done = jasmine.createSpy('done');
-        var warnSpy = spyOn($log, 'warn');
-
-        $$mdInput.messages.show(element, done);
-
-        expect(done).toHaveBeenCalled();
-        expect(warnSpy).toHaveBeenCalled();
-      }));
-    });
-
-    describe('#hideInputMessages', function() {
-      it('logs a warning with no messages element', inject(function($log) {
-        // Note that the element does NOT have a parent md-input-messages-animation class
-        var element = angular.element('<div><div class="md-input-message-animation"></div></div>');
-        var done = jasmine.createSpy('done');
-        var warnSpy = spyOn($log, 'warn');
-
-        $$mdInput.messages.hide(element, done);
-
-        expect(done).toHaveBeenCalled();
-        expect(warnSpy).toHaveBeenCalled();
-      }));
-
-      it('logs a warning with no messages children', inject(function($log) {
-        // Note that the element does NOT have any child md-input-message-animation divs
-        var element = angular.element('<div class="md-input-messages-animation"></div>');
-        var done = jasmine.createSpy('done');
-        var warnSpy = spyOn($log, 'warn');
-
-        $$mdInput.messages.hide(element, done);
-
-        expect(done).toHaveBeenCalled();
-        expect(warnSpy).toHaveBeenCalled();
-      }));
-    });
-
-    describe('#getMessagesElement', function() {
-
-      it('finds the messages element itself', function() {
-        var template = '<div class="md-input-messages-animation"></div>';
-        var dom = angular.element(template);
-        var messages = $$mdInput.messages.getElement(dom);
-
-        expect(dom).toEqual(messages);
-      });
-
-      it('finds a child element', function(){
-        var template = '<div><div class="md-input-messages-animation"></div></div>';
-        var dom = angular.element(template);
-        var realMessages = angular.element(dom[0].querySelector('.md-input-messages-animation'));
-        var messages = $$mdInput.messages.getElement(dom);
-
-        expect(realMessages).toEqual(messages);
-      });
-
-      it('finds the parent of a message animation element', function() {
-        var template =
-              '<div class="md-input-messages-animation">' +
-              '  <div class="md-input-message-animation"></div>' +
-              '</div>';
-        var dom = angular.element(template);
-        var message = angular.element(dom[0].querySelector('.md-input-message-animation'));
-        var messages = $$mdInput.messages.getElement(message);
-
-        expect(dom).toEqual(messages);
-      });
-    });
   });
 
   it('set the proper styles when showing messages on an md-checkbox', function() {
@@ -290,59 +189,23 @@ describe('md-input-container animations', function() {
    * before/afterEach Helper Functions
    */
 
-  // Decorate the $animateCss service so we can spy on it and disable any CSS transitions
-  function decorateAnimateCss() {
-    module(function($provide) {
-      $provide.decorator('$animateCss', function($delegate) {
-        return jasmine.createSpy('$animateCss').and.callFake(function(element, options) {
-
-          // Store the last call to $animateCss
-          //
-          // NOTE: We handle this manually because the actual code modifies the options
-          // and can make the tests fail if it executes before the expect() fires
-          lastAnimateCall = {
-            element: element,
-            options: angular.copy(options)
-          };
-
-          // Make sure any transitions happen immediately; NOTE: this is REQUIRED for the above
-          // tests to pass without using window.setTimeout to wait for the animations
-          if (cssTransitionsDisabled) {
-            element.css('transition', '0s none');
-          }
-
-          return $delegate(element, options);
-        });
-      });
-    });
-  }
-
   // Setup/grab our variables
   function injectGlobals() {
     inject(function($injector) {
       $rootScope = $injector.get('$rootScope');
       $compile = $injector.get('$compile');
-      $animateCss = $injector.get('$animateCss');
       $material = $injector.get('$material');
-      $$mdInput = $injector.get('$$mdInput');
-
-      // Grab our input animations (we MUST use the injector to setup dependencies)
-      invalidAnimation = $injector.get('mdInputInvalidAnimation');
-      messagesAnimation = $injector.get('mdInputMessagesAnimation');
-      messageAnimation = $injector.get('mdInputMessageAnimation');
+      $window = $injector.get('$window');
     });
   }
 
   // Setup some custom variables for these tests
   function setupVariables() {
     pageScope = $rootScope.$new();
-    cssTransitionsDisabled = true;
   }
 
   // Teardown our tests by resetting variables and removing our element
   function teardown() {
-    cssTransitionsDisabled = false;
-
     el && el.remove && el.remove();
   }
 });
