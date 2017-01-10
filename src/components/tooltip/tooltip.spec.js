@@ -84,6 +84,18 @@ describe('MdTooltip Component', function() {
     expect(element.attr('aria-label')).toEqual('Tooltip');
   });
 
+  it('should not label the parent if it already has a label', function() {
+    buildTooltip(
+      '<md-button aria-label="Button Label">' +
+        '<md-tooltip md-visible="testModel.isVisible">' +
+          'Tooltip' +
+        '</md-tooltip>' +
+      '</md-button>'
+    );
+
+    expect(element.attr('aria-label')).toEqual('Button Label');
+  });
+
   it('should interpolate the aria-label', function() {
     buildTooltip(
       '<md-button>' +
@@ -96,43 +108,65 @@ describe('MdTooltip Component', function() {
 
   it('should update the aria-label when the interpolated value changes',
       function() {
-        buildTooltip(
-          '<md-button>' +
-            '<md-tooltip>{{ testModel.ariaText }}</md-tooltip>' +
-          '</md-button>'
-        );
+    buildTooltip(
+      '<md-button>' +
+        '<md-tooltip>{{ testModel.ariaText }}</md-tooltip>' +
+      '</md-button>'
+    );
 
-        $rootScope.$apply(function() {
-          $rootScope.testModel.ariaText = 'test 1';
-        });
+    $rootScope.$apply(function() {
+      $rootScope.testModel.ariaText = 'test 1';
+    });
 
-        expect(element.attr('aria-label')).toBe('test 1');
+    expect(element.attr('aria-label')).toBe('test 1');
 
-        $rootScope.$apply(function() {
-          $rootScope.testModel.ariaText = 'test 2';
-        });
+    $rootScope.$apply(function() {
+      $rootScope.testModel.ariaText = 'test 2';
+    });
 
-        expect(element.attr('aria-label')).toBe('test 2');
-      });
-  
+    expect(element.attr('aria-label')).toBe('test 2');
+  });
+
+  it('should not update the parent aria-label when the interpolated' +
+      'value changes and the parent has a label that was not set by ' +
+      'the tooltip', function() {
+    buildTooltip(
+      '<md-button aria-label="Button Label">' +
+        '<md-tooltip>{{ testModel.ariaText }}</md-tooltip>' +
+      '</md-button>'
+    );
+
+    $rootScope.$apply(function() {
+      $rootScope.testModel.ariaText = 'test 1';
+    });
+
+    expect(element.attr('aria-label')).toBe('Button Label');
+
+    $rootScope.$apply(function() {
+      $rootScope.testModel.ariaText = 'test 2';
+    });
+
+    expect(element.attr('aria-label')).toBe('Button Label');
+  });
+
   it('should not interpolate interpolated values', function() {
     buildTooltip(
-        '<md-button>' +
-         '<md-tooltip>{{ testModel.ariaTest }}</md-tooltip>' +
-        '</md-button>'
-      );
+      '<md-button>' +
+       '<md-tooltip>{{ testModel.ariaTest }}</md-tooltip>' +
+      '</md-button>'
+    );
 
-      $rootScope.$apply(function() {
-        $rootScope.testModel.ariaTest = 'test {{1+1}}';
-      });
+    $rootScope.$apply(function() {
+      $rootScope.testModel.ariaTest = 'test {{1+1}}';
+    });
 
-      expect(element.attr('aria-label')).toBe('test {{1+1}}');
+    expect(element.attr('aria-label')).toBe('test {{1+1}}');
 
-      $rootScope.$apply(function() {
-        $rootScope.testModel.ariaTest = 'test {{1+1336}}';
-      });
+    $rootScope.$apply(function() {
+      $rootScope.testModel.ariaTest = 'test {{1+1336}}';
+    });
 
-      expect(element.attr('aria-label')).toBe('test {{1+1336}}');
+    expect(element.attr('aria-label')).toBe('test {{1+1336}}');
   });
 
   it('should not set parent to items with no pointer events',
